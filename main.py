@@ -1,9 +1,10 @@
 import telebot
-from db import User, Booking
+from db import User, Booking, db
 
 with open('api_keys', 'r') as f:
     api_keys = f.readline()
 
+db.create_tables([User, Booking])
 bot = telebot.TeleBot(api_keys, parse_mode=None)
 
 @bot.message_handler(commands=['start', 'help'])
@@ -16,3 +17,4 @@ def register_user(message):
     user.save()
 
 bot.infinity_polling()
+db.close()
