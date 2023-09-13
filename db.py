@@ -2,14 +2,14 @@ from peewee import *
 
 db = SqliteDatabase('data.db')
 class User(Model):
-    id = CharField()
-    name = CharField()
+    t_id = CharField(unique=True)
+    name = CharField(unique=True)
     
     class Meta:
         database = db
 
 class Booking(Model):
-    position = AutoField()
+    position = IntegerField(unique=True)
     owner = ForeignKeyField(User)
 
     class Meta:
