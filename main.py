@@ -31,6 +31,8 @@ def register_user(message):
         return
     user = User.create(t_id=message.from_user.id, name=' '.join(message.text.split(' ')[1:]))
     user.save()
+    bot.reply_to(message, 'Вы успешно зарегистрированы!\nЧтобы встать в очередь, напишите /join \
+                 \nЧтобы посмотреть очередь, напишите /queue')
 
 @bot.message_handler(commands=['join', 'enqueue'])
 def enqueue(message):
@@ -40,6 +42,9 @@ def enqueue(message):
         return
     booking = Booking.create(owner=user) # position=0
     booking.save()
+    bot.reply_to(message, 'Вы встали в очередь. Когда она подойдет - придет уведомление.')
+    bot.reply_to(message, 'Как только вы ответите - сразу напишите /exit. \
+                 \nТак следующий человек поймет, что ему пора отвечать.')
 
 @bot.message_handler(commands=['list_users'])
 def list_users(message):
