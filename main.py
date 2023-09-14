@@ -38,7 +38,7 @@ def enqueue(message):
     if len(user) != 1:
         bot.reply_to(message, 'Прежде чем добавиться в очередь необходимо зарегистрироваться с помощью команды /register.')
         return
-    booking = Booking.create(position=0, owner=user)
+    booking = Booking.create(owner=user) # position=0
     booking.save()
 
 @bot.message_handler(commands=['list_users'])
@@ -56,7 +56,7 @@ def list_users(message):
 def list_queue(message):
     queue = ''
     for i, booking in enumerate(Booking.select()):
-        queue += f'{i}. {booking.position} {booking.owner.name} {booking.owner.t_id}\n'
+        queue += f'{i + 1}. {booking.owner.name}\n'  # {booking.position} {booking.owner.t_id}
     if not queue:
         queue = 'Очередь пуста'
     bot.reply_to(message, queue)
