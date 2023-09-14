@@ -40,11 +40,28 @@ def enqueue(message):
     if len(user) != 1:
         bot.reply_to(message, 'Прежде чем добавиться в очередь необходимо зарегистрироваться с помощью команды /register.')
         return
+    number_of_places = Booking.select().where(Booking.owner == user)
+    if len(number_of_places) > 0:
+        bot.reply_to(message, 'Вы уже находитесь в очереди.')
+        return
     booking = Booking.create(owner=user) # position=0
     booking.save()
     bot.reply_to(message, 'Вы встали в очередь. Когда она подойдет - придет уведомление.')
     bot.reply_to(message, 'Как только вы ответите - сразу напишите /exit. \
                  \nТак следующий человек поймет, что ему пора отвечать.')
+
+@bot.message_handler(commands=['exit', 'leave'])
+def leave_the_queue(message):
+    user = User.select().where(User.t_id == str(message.from_user.id))
+    if len(user) != 1:
+        bot.reply_to(message, 'Зарегистрируйтесь с помощью команды /register.')
+        return
+    booking = Booking.select().where(Booking.owner == user)
+    if len(booking) == 0:
+        bot.reply_to(message, 'Вы не находитесь в очереди.')
+        return
+    booking[0].delete_instance()
+    bot.reply_to(message, 'Вы успешно вышли из очереди.')
 
 @bot.message_handler(commands=['list_users'])
 def list_users(message):
