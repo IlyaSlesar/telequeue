@@ -18,7 +18,6 @@ def check_rights(message):
         bot.reply_to(message, 'У вас нет прав выполнить эту команду.')
     return have_rights
 
-
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     bot.reply_to(message, 'Напиши /register [ФИО], чтобы зарегистрироваться.')
@@ -31,6 +30,8 @@ def register_user(message):
         return
     user = User.create(t_id=message.from_user.id, name=' '.join(message.text.split(' ')[1:]))
     user.save()
+    bot.reply_to(message, 'Вы успешно зарегистрированы!\nЧтобы встать в очередь, напишите /join \
+                 \nЧтобы посмотреть очередь, напишите /queue')
 
 @bot.message_handler(commands=['join', 'enqueue'])
 def enqueue(message):
@@ -38,8 +39,31 @@ def enqueue(message):
     if len(user) != 1:
         bot.reply_to(message, 'Прежде чем добавиться в очередь необходимо зарегистрироваться с помощью команды /register.')
         return
-    booking = Booking.create(position=0, owner=user)
+    number_of_places = Booking.select().where(Booking.owner == user)
+    if len(number_of_places) > 0:
+        bot.reply_to(message, 'Вы уже находитесь в очереди.')
+        return
+    booking = Booking.create(owner=user) # position=0
     booking.save()
+    bot.reply_to(message, 'Вы встали в очередь. Когда она подойдет - придет уведомление.')
+    bot.reply_to(message, 'Как только вы ответите - сразу напишите /exit. \
+                 \nТак следующий человек поймет, что ему пора отвечать.')
+    queue_change_notify()
+
+@bot.message_handler(commands=['exit', 'leave'])
+def leave_the_queue(message):
+    user = User.select().where(User.t_id == str(message.from_user.id))
+    if len(user) != 1:
+        bot.reply_to(message, 'Зарегистрируйтесь с помощью команды /register.')
+        return
+    booking = Booking.select().where(Booking.owner == user)
+    if len(booking) == 0:
+        bot.reply_to(message, 'Вы не находитесь в очереди.')
+        return
+    booking[0].delete_instance()
+    bot.reply_to(message, 'Вы успешно вышли из очереди.')
+    queue_change_notify()
+    congratulations()
 
 @bot.message_handler(commands=['list_users'])
 def list_users(message):
@@ -53,13 +77,29 @@ def list_users(message):
     bot.reply_to(message, user_list)
 
 @bot.message_handler(commands=['queue', 'list_queue', 'bookings'])
-def list_queue(message):
+def send_queue(message):
+    bot.reply_to(message, list_queue())
+
+def list_queue():
     queue = ''
     for i, booking in enumerate(Booking.select()):
-        queue += f'{i}. {booking.position} {booking.owner.name} {booking.owner.t_id}\n'
+        queue += f'{i + 1}. {booking.owner.name}\n'  # {booking.position} {booking.owner.t_id}
     if not queue:
         queue = 'Очередь пуста'
-    bot.reply_to(message, queue)
+    return queue
+
+def queue_change_notify():
+    for user in User.select():
+        t_id = user.t_id
+        bot.send_message(t_id, 'Очередь обновилась:')
+        bot.send_message(t_id, list_queue())
+
+def congratulations():
+    first_id = Booking.select()[0].owner.t_id
+    for user in User.select():
+        if user.t_id == first_id:
+            bot.send_message(user.t_id, 'Поздравляем! Твоя очередь подошла!')
+            bot.send_sticker(user.t_id, "CAACAgIAAxkBAAEKTGVlA04aQN6QF-xrZqcTr2EhmrqFmQACGwADwDZPE329ioPLRE1qMAQ")
 
 bot.infinity_polling()
 db.close()
