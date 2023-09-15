@@ -28,7 +28,17 @@ def register_user(message):
     if len(existing_user) != 0:
         bot.reply_to(message, 'С данного телеграм аккаунта уже создан пользователь.')
         return
-    user = User.create(t_id=message.from_user.id, name=' '.join(message.text.split(' ')[1:]))
+    username = ' '.join(message.text.split(' ')[1:])
+    if len(username) < 3:
+        bot.reply_to(message, 'Имя должно содержать более 3 символов')
+        return
+    for sym in username:
+        if sym != '':
+            break
+    else:
+        bot.reply_to(message, 'Имя не должно быть пустым')
+        return
+    user = User.create(t_id=message.from_user.id, name=username)
     user.save()
     bot.reply_to(message, 'Вы успешно зарегистрированы!\nЧтобы встать в очередь, напишите /join \
                  \nЧтобы посмотреть очередь, напишите /queue')
@@ -49,6 +59,7 @@ def enqueue(message):
     bot.reply_to(message, 'Как только вы ответите - сразу напишите /exit. \
                  \nТак следующий человек поймет, что ему пора отвечать.')
     queue_change_notify()
+    congratulations()
 
 @bot.message_handler(commands=['exit', 'leave'])
 def leave_the_queue(message):
@@ -95,10 +106,13 @@ def queue_change_notify():
         bot.send_message(t_id, list_queue())
 
 def congratulations():
-    first_id = Booking.select()[0].owner.t_id
+    bookings = Booking.select()
+    if len(bookings) == 0:
+        return
+    first_id = bookings[0].owner.t_id
     for user in User.select():
         if user.t_id == first_id:
-            bot.send_message(user.t_id, 'Поздравляем! Твоя очередь подошла!')
+            bot.send_message(user.t_id, 'Поздравляем! Твоя очередь подошла! Не забудь написать /exit как сдашь работу!')
             bot.send_sticker(user.t_id, "CAACAgIAAxkBAAEKTGVlA04aQN6QF-xrZqcTr2EhmrqFmQACGwADwDZPE329ioPLRE1qMAQ")
 
 bot.infinity_polling()
