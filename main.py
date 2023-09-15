@@ -24,10 +24,11 @@ def send_welcome(message):
 
 @bot.message_handler(commands=['register'])
 def register_user(message):
-    existing_user = User.select().where(User.t_id == str(message.from_user.id))
-    if len(existing_user) != 0:
+    user_check_tid = User.select().where(User.t_id == str(message.from_user.id))
+    if len(user_check_tid) != 0:
         bot.reply_to(message, 'С данного телеграм аккаунта уже создан пользователь.')
         return
+    
     username = ' '.join(message.text.split(' ')[1:])
     if len(username) < 3:
         bot.reply_to(message, 'Имя должно содержать более 3 символов')
@@ -37,6 +38,10 @@ def register_user(message):
             break
     else:
         bot.reply_to(message, 'Имя не должно быть пустым')
+        return
+    user_check_name = User.select().where(User.name == username)
+    if len(user_check_name) != 0:
+        bot.reply_to(message, 'Данное имя уже занято')
         return
     user = User.create(t_id=message.from_user.id, name=username)
     user.save()
