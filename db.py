@@ -9,7 +9,6 @@ class User(Model):
         database = db
 
 class Booking(Model):
-    # position = IntegerField(unique=True)
     owner = ForeignKeyField(User)
 
     class Meta:

@@ -53,7 +53,7 @@ def enqueue(message):
     if len(number_of_places) > 0:
         bot.reply_to(message, 'Вы уже находитесь в очереди.')
         return
-    booking = Booking.create(owner=user) # position=0
+    booking = Booking.create(owner=user)
     booking.save()
     bot.reply_to(message, 'Вы встали в очередь. Когда она подойдет - придет уведомление.')
     bot.reply_to(message, 'Как только вы ответите - сразу напишите /exit. \
@@ -94,7 +94,7 @@ def send_queue(message):
 def list_queue():
     queue = ''
     for i, booking in enumerate(Booking.select()):
-        queue += f'{i + 1}. {booking.owner.name}\n'  # {booking.position} {booking.owner.t_id}
+        queue += f'{i + 1}. {booking.owner.name}\n'
     if not queue:
         queue = 'Очередь пуста'
     return queue
