@@ -52,13 +52,22 @@ def register_user(message):
 def enqueue(message):
     user = User.select().where(User.t_id == str(message.from_user.id))
     if len(user) != 1:
-        bot.reply_to(message, 'Прежде чем добавиться в очередь необходимо зарегистрироваться с помощью команды /register.')
+        bot.reply_to(message, 'Прежде чем добавиться в очередь необходимо зарегистрироваться с помощью команды /register [ФИО]')
         return
-    number_of_places = Booking.select().where(Booking.owner == user)
+    arguments = message.text.split(' ')[1:]
+    if len(arguments) != 1:
+        bot.reply_to(message, 'Необходимо указать одну цифру после команды: /join [номер модуля]. \n Пример: /join 4')
+        return
+    module = int(arguments[0])
+    if not (module <= 5 and module >= 1):
+        bot.reply_to(message, 'Модуль должен быть цифрой от 1 до 5')
+        return
+    number_of_places = Booking.select().where(Booking.owner == user, Booking.module == module)
     if len(number_of_places) > 0:
-        bot.reply_to(message, 'Вы уже находитесь в очереди.')
+        bot.reply_to(message, 'Вы уже находитесь в очереди на сдачу этого модуля.')
         return
-    booking = Booking.create(owner=user)
+
+    booking = Booking.create(owner=user, module=module)
     booking.save()
     bot.reply_to(message, 'Вы встали в очередь. Когда она подойдет - придет уведомление.')
     bot.reply_to(message, 'Как только вы ответите - сразу напишите /exit. \
@@ -70,7 +79,7 @@ def enqueue(message):
 def leave_the_queue(message):
     user = User.select().where(User.t_id == str(message.from_user.id))
     if len(user) != 1:
-        bot.reply_to(message, 'Зарегистрируйтесь с помощью команды /register.')
+        bot.reply_to(message, 'Зарегистрируйтесь с помощью команды /register [ФИО].')
         return
     booking = Booking.select().where(Booking.owner == user)
     if len(booking) == 0:
@@ -87,7 +96,7 @@ def list_users(message):
         return
     user_list = ''
     for i, user in enumerate(User.select()):
-        user_list += f'{i}. {user.name} {user.t_id}\n'
+        user_list += f'{i + 1}. {user.name} {user.t_id}\n'
     if not user_list:
         user_list = 'Нет зарегистрированных пользователей.'
     bot.reply_to(message, user_list)
@@ -98,8 +107,11 @@ def send_queue(message):
 
 def list_queue():
     queue = ''
-    for i, booking in enumerate(Booking.select()):
-        queue += f'{i + 1}. {booking.owner.name}\n'
+    pos = 1
+    for module in range(1, 5):
+        for booking in Booking.select().where(Booking.module == module):
+            queue += f'{pos}. {booking.owner.name} (Модуль {booking.module})\n'
+            pos += 1
     if not queue:
         queue = 'Очередь пуста'
     return queue
@@ -114,10 +126,15 @@ def congratulations():
     bookings = Booking.select()
     if len(bookings) == 0:
         return
-    first_id = bookings[0].owner.t_id
+    first = (0, 0)
+    for module in range(1, 5):
+        booking = Booking.select().where(Booking.module == module)
+        if len(booking) > 0:
+            first = (booking[0].owner.t_id, booking[0].module)
+            break
     for user in User.select():
-        if user.t_id == first_id:
-            bot.send_message(user.t_id, 'Поздравляем! Твоя очередь подошла! Не забудь написать /exit как сдашь работу!')
+        if user.t_id == first[0]:
+            bot.send_message(user.t_id, f'Поздравляем! Подошла твоя очередь на сдачу {first[1]} модуля! Не забудь написать /exit как сдашь работу!')
             bot.send_sticker(user.t_id, "CAACAgIAAxkBAAEKTGVlA04aQN6QF-xrZqcTr2EhmrqFmQACGwADwDZPE329ioPLRE1qMAQ")
 
 bot.infinity_polling()

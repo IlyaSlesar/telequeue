@@ -10,6 +10,7 @@ class User(Model):
 
 class Booking(Model):
     owner = ForeignKeyField(User)
+    module = IntegerField()
 
     class Meta:
         database = db
