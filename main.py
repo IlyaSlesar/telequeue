@@ -24,6 +24,10 @@ def send_welcome(message):
 
 @bot.message_handler(commands=['register'])
 def register_user(message):
+    bot.reply_to(message, 'Введите своё ФИО')
+    bot.register_next_step_handler(message, register_process_name)
+
+def register_process_name(message):
     user_check_tid = User.select().where(User.t_id == str(message.from_user.id))
     if len(user_check_tid) != 0:
         bot.reply_to(message, 'С данного телеграм аккаунта уже создан пользователь.')
