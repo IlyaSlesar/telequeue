@@ -15,39 +15,37 @@ bot = telebot.TeleBot(config['api_key'], parse_mode=None)
 def check_rights(message):
     have_rights = message.from_user.id in config['admins']
     if not have_rights:
-        bot.reply_to(message, 'У вас нет прав выполнить эту команду.')
+        bot.reply_to(message, 'У вас нет прав выполнить эту команду')
     return have_rights
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
-    bot.reply_to(message, 'Напиши /register [ФИО], чтобы зарегистрироваться.')
+    bot.reply_to(message, 'Напиши /register, чтобы зарегистрироваться')
 
 @bot.message_handler(commands=['register'])
-def register_user(message):
-    bot.reply_to(message, 'Введите своё ФИО')
-    bot.register_next_step_handler(message, register_process_name)
-
-def register_process_name(message):
+def register(message):
     user_check_tid = User.select().where(User.t_id == str(message.from_user.id))
     if len(user_check_tid) != 0:
-        bot.reply_to(message, 'С данного телеграм аккаунта уже создан пользователь.')
+        bot.reply_to(message, 'Вы уже зарегистрированны')
         return
-    
-    username = ' '.join(message.text.split(' ')[1:])
-    if len(username) < 3:
+    bot.reply_to(message, 'Введите своё ФИО')
+    bot.register_next_step_handler(message, register_process_username)
+
+def register_process_username(message):
+    if len(message.text) < 3:
         bot.reply_to(message, 'Имя должно содержать более 3 символов')
         return
-    for sym in username:
-        if sym != '':
+    for sym in message.text:
+        if sym != ' ':
             break
     else:
         bot.reply_to(message, 'Имя не должно быть пустым')
         return
-    user_check_name = User.select().where(User.name == username)
+    user_check_name = User.select().where(User.name == message.text)
     if len(user_check_name) != 0:
         bot.reply_to(message, 'Данное имя уже занято')
         return
-    user = User.create(t_id=message.from_user.id, name=username)
+    user = User.create(t_id=message.from_user.id, name=message.text)
     user.save()
     bot.reply_to(message, 'Вы успешно зарегистрированы!\nЧтобы встать в очередь, напишите /join \
                  \nЧтобы посмотреть очередь, напишите /queue')
@@ -56,13 +54,23 @@ def register_process_name(message):
 def enqueue(message):
     user = User.select().where(User.t_id == str(message.from_user.id))
     if len(user) != 1:
-        bot.reply_to(message, 'Прежде чем добавиться в очередь необходимо зарегистрироваться с помощью команды /register [ФИО]')
+        bot.reply_to(message, 'Прежде чем добавиться в очередь необходимо зарегистрироваться с помощью команды /register')
         return
-    arguments = message.text.split(' ')[1:]
-    if len(arguments) != 1:
-        bot.reply_to(message, 'Необходимо указать одну цифру после команды: /join [номер модуля]. \n Пример: /join 4')
+    if config['modules']:
+        bot.reply_to(message, 'Введите номер модуля, который будете сдавать')
+        bot.register_next_step_handler(message, enqueue_process_module)
         return
-    module = int(arguments[0])
+    booking = Booking.create(owner=user, module=0)
+    booking.save()
+    bot.reply_to(message, 'Вы встали в очередь. Когда она подойдет - придёт уведомление.')
+    bot.reply_to(message, 'Как только вы ответите - сразу напишите /exit. \
+                \nТак следующий человек поймет, что ему пора отвечать.')
+    queue_change_notify()
+    congratulations()
+    
+def enqueue_process_module(message):
+    user = User.select().where(User.t_id == str(message.from_user.id))
+    module = int(message.text)
     if not (module <= 5 and module >= 1):
         bot.reply_to(message, 'Модуль должен быть цифрой от 1 до 5')
         return
@@ -70,7 +78,6 @@ def enqueue(message):
     if len(number_of_places) > 0:
         bot.reply_to(message, 'Вы уже находитесь в очереди на сдачу этого модуля.')
         return
-
     booking = Booking.create(owner=user, module=module)
     booking.save()
     bot.reply_to(message, 'Вы встали в очередь. Когда она подойдет - придет уведомление.')
@@ -79,13 +86,29 @@ def enqueue(message):
     queue_change_notify()
     congratulations()
 
+
 @bot.message_handler(commands=['exit', 'leave'])
-def leave_the_queue(message):
+def dequeue(message):
     user = User.select().where(User.t_id == str(message.from_user.id))
     if len(user) != 1:
         bot.reply_to(message, 'Зарегистрируйтесь с помощью команды /register [ФИО].')
         return
+    if config['modules']:
+        bot.reply_to('Введите номер модуля, который передумали сдавать')
+        bot.register_next_step_handler(message, dequeue_process_module)
+        return
     booking = Booking.select().where(Booking.owner == user)
+    if len(booking) == 0:
+        bot.reply_to(message, 'Вы не находитесь в очереди.')
+        return
+    booking[0].delete_instance()
+    bot.reply_to(message, 'Вы успешно вышли из очереди.')
+    queue_change_notify()
+    congratulations()
+
+def dequeue_process_module(message):
+    user = User.select().where(User.t_id == str(message.from_user.id))
+    booking = Booking.select().where(Booking.owner == user, booking.module == int(message.text))
     if len(booking) == 0:
         bot.reply_to(message, 'Вы не находитесь в очереди.')
         return
@@ -111,11 +134,15 @@ def send_queue(message):
 
 def list_queue():
     queue = ''
-    pos = 1
-    for module in range(1, 5):
-        for booking in Booking.select().where(Booking.module == module):
-            queue += f'{pos}. {booking.owner.name} (Модуль {booking.module})\n'
-            pos += 1
+    if config['modules']:
+        pos = 1
+        for module in range(1, 5):
+            for booking in Booking.select().where(Booking.module == module):
+                queue += f'{pos}. {booking.owner.name} (Модуль {booking.module})\n'
+                pos += 1
+    else:
+        for pos, booking in enumerate(Booking.select()):
+            queue += f'{pos + 1}. {booking.owner.name}\n'
     if not queue:
         queue = 'Очередь пуста'
     return queue
@@ -130,15 +157,21 @@ def congratulations():
     bookings = Booking.select()
     if len(bookings) == 0:
         return
-    first = (0, 0)
-    for module in range(1, 5):
-        booking = Booking.select().where(Booking.module == module)
-        if len(booking) > 0:
-            first = (booking[0].owner.t_id, booking[0].module)
-            break
+    
+    if config['modules']:
+        for module in range(1, 5):
+            booking = Booking.select().where(Booking.module == module)
+            if len(booking) > 0:
+                first = (booking[0].owner.t_id, booking[0].module)
+                break
+    else:
+        first = (Booking.select()[0].owner.t_id,)
     for user in User.select():
         if user.t_id == first[0]:
-            bot.send_message(user.t_id, f'Поздравляем! Подошла твоя очередь на сдачу {first[1]} модуля! Не забудь написать /exit как сдашь работу!')
+            if config['modules']:
+                bot.send_message(user.t_id, f'Поздравляем! Подошла твоя очередь на сдачу {first[1]} модуля! Не забудь написать /exit как сдашь работу!')
+            else:
+                bot.send_message(user.t_id, f'Поздравляем! Подошла твоя очередь! Не забудь написать /exit как сдашь работу!')
             bot.send_sticker(user.t_id, "CAACAgIAAxkBAAEKTGVlA04aQN6QF-xrZqcTr2EhmrqFmQACGwADwDZPE329ioPLRE1qMAQ")
 
 bot.infinity_polling()

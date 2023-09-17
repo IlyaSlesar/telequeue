@@ -1,4 +1,5 @@
 api_key: insert_api_key_here
+modules: true/false
 admins: 
   - insert_your_telegram_id_here 
   - and another id
