@@ -24,6 +24,8 @@ def check_rights(message):
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     bot.reply_to(message, locale['help'])
+    if message.from_user.id in config['admins']:
+        bot.reply_to(message, locale['help_adm'])
 
 @bot.message_handler(commands=['register'])
 def register(message):
