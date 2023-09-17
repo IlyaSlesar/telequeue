@@ -34,19 +34,24 @@ def register(message):
     bot.reply_to(message, locale['input_username'])
     bot.register_next_step_handler(message, register_process_username)
 
-def register_process_username(message):
+def check_username(message):
     if len(message.text) < 3:
         bot.reply_to(message, locale['short_username'])
-        return
+        return False
     for sym in message.text:
         if sym != ' ':
             break
     else:
         bot.reply_to(message, locale['empty_username'])
-        return
+        return False
     user_check_name = User.select().where(User.name == message.text)
     if len(user_check_name) != 0:
         bot.reply_to(message, locale['taken_username'])
+        return False
+    return True
+
+def register_process_username(message):
+    if not check_username(message):
         return
     user = User.create(t_id=message.from_user.id, name=message.text)
     user.save()
@@ -112,6 +117,22 @@ def dequeue_process_module(message):
     booking[0].delete_instance()
     bot.reply_to(message, locale['dequeue_success'])
     queue_change_notify()
+
+@bot.message_handler(commands=['rename'])
+def rename(message):
+    user = User.select().where(User.t_id == str(message.from_user.id))
+    if len(user) != 1:
+        bot.reply_to(message, locale['registration_required'])
+        return
+    bot.reply_to(message, locale['input_username'])
+    bot.register_next_step_handler(message, partial(rename_proccess_name, user=user[0]))
+
+def rename_proccess_name(message, user):
+    if not check_username(message):
+        return
+    user.name = message.text
+    user.save()
+    bot.reply_to(message, locale['rename_success'])
 
 @bot.message_handler(commands=['list_users'])
 def list_users(message):
