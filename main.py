@@ -115,7 +115,7 @@ def dequeue(message):
 
 def dequeue_process_module(message):
     user = User.select().where(User.t_id == str(message.from_user.id))
-    booking = Booking.select().where(Booking.owner == user, booking.module == int(message.text))
+    booking = Booking.select().where(Booking.owner == user, Booking.module == int(message.text))
     if len(booking) == 0:
         bot.reply_to(message, locale['not_enqueued'])
         return
