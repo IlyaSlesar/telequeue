@@ -211,7 +211,7 @@ def list_queue(include_ids = False):
         pos = 1
         for module in range(1, 5):
             for booking in Booking.select().where(Booking.module == module):
-                queue += f'{pos}. {booking.owner.name} ({locale.module} {booking.module}) {booking.owner.t_id if include_ids else str()}\n'
+                queue += f'{pos}. {booking.owner.name} ({locale["module"]} {booking.module}) {booking.owner.t_id if include_ids else str()}\n'
                 pos += 1
     else:
         for pos, booking in enumerate(Booking.select()):
