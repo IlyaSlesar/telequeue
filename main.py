@@ -69,7 +69,7 @@ def enqueue(message):
         bot.reply_to(message, locale['input_module'])
         bot.register_next_step_handler(message, enqueue_process_module)
         return
-    if len(Booking.select().where(Booking.owner == user)) > 1:
+    if len(Booking.select().where(Booking.owner == user)) > 0:
         bot.reply_to(message, locale['already_enqueued'])
         return
     booking = Booking.create(owner=user, module=0)
