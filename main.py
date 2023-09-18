@@ -102,7 +102,7 @@ def dequeue(message):
         bot.reply_to(message, locale['registration_required'])
         return
     if config['modules']:
-        bot.reply_to(locale['input_module'])
+        bot.reply_to(message, locale['input_module'])
         bot.register_next_step_handler(message, dequeue_process_module)
         return
     booking = Booking.select().where(Booking.owner == user)
