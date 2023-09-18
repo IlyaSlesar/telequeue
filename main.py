@@ -88,6 +88,10 @@ def enqueue_process_module(message):
     if len(number_of_places) > 0:
         bot.reply_to(message, locale['already_enqueued'])
         return
+    number_of_modules = Booking.select().where(Booking.owner == user)
+    if len(number_of_modules) > 1:
+        bot.reply_to(message, locale['too_many_modules'].format(2))
+        return
     booking = Booking.create(owner=user, module=module)
     booking.save()
     bot.reply_to(message, locale['enqueue_success'])

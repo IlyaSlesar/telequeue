@@ -40,3 +40,4 @@ congrats_sticker: CAACAgIAAxkBAAEKTGVlA04aQN6QF-xrZqcTr2EhmrqFmQACGwADwDZPE329io
 congrats_module: Поздравляем! Подошла твоя очередь на сдачу {} модуля! Не забудь написать /exit как сдашь работу!
 module: Модуль
 rename_success: Вы успешно сменили своё имя
+too_many_modules: Вы превысили количество одновременных записей на сдачу модулей ({}) 
